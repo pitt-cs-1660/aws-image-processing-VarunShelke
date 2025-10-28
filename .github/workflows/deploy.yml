@@ -6,7 +6,7 @@ on:
       - main
 
 env:
-  AWS_REGION: us-east-1  # update if you are in a different region
+  AWS_REGION: us-east-1
   CDK_STACK_NAME: Assignment3Stack  # CloudFormation stack name from CDK
 
 jobs:
@@ -37,6 +37,13 @@ jobs:
             --output text \
             --region ${{ env.AWS_REGION }})
           echo "lambda_role_arn=$LAMBDA_ROLE_ARN" >> $GITHUB_OUTPUT
+
+          SNS_TOPIC_ARN=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.CDK_STACK_NAME }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`SnsTopicArn`].OutputValue' \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+          echo "sns_topic_arn=$SNS_TOPIC_ARN" >> $GITHUB_OUTPUT
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -89,6 +96,55 @@ jobs:
           role: ${{ steps.cfn-outputs.outputs.lambda_role_arn }}
           publish: true
 
+      - name: Subscribe resize Lambda to SNS with filter
+        run: |
+          # Get Lambda ARN
+          LAMBDA_ARN=$(aws lambda get-function \
+            --function-name resize-lambda \
+            --query 'Configuration.FunctionArn' \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+
+          # Check if subscription already exists
+          EXISTING_SUB=$(aws sns list-subscriptions-by-topic \
+            --topic-arn ${{ steps.cfn-outputs.outputs.sns_topic_arn }} \
+            --query "Subscriptions[?Endpoint=='$LAMBDA_ARN'].SubscriptionArn" \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+
+          # Subscribe if not already subscribed
+          if [ -z "$EXISTING_SUB" ]; then
+            SUB_ARN=$(aws sns subscribe \
+              --topic-arn ${{ steps.cfn-outputs.outputs.sns_topic_arn }} \
+              --protocol lambda \
+              --notification-endpoint $LAMBDA_ARN \
+              --query 'SubscriptionArn' \
+              --output text \
+              --region ${{ env.AWS_REGION }})
+            echo "Created subscription: $SUB_ARN"
+          else
+            SUB_ARN=$EXISTING_SUB
+            echo "Subscription already exists: $SUB_ARN"
+          fi
+
+          # Set filter policy for resize prefix
+          aws sns set-subscription-attributes \
+            --subscription-arn $SUB_ARN \
+            --attribute-name FilterPolicy \
+            --attribute-value '{"Records":{"s3":{"object":{"key":[{"prefix":"resize/"}]}}}}' \
+            --region ${{ env.AWS_REGION }}
+
+          # Grant SNS permission to invoke Lambda
+          aws lambda add-permission \
+            --function-name resize-lambda \
+            --statement-id sns-invoke-resize \
+            --action lambda:InvokeFunction \
+            --principal sns.amazonaws.com \
+            --source-arn ${{ steps.cfn-outputs.outputs.sns_topic_arn }} \
+            --region ${{ env.AWS_REGION }} 2>/dev/null || echo "Permission already exists"
+
+          echo "Resize Lambda subscribed to SNS with filter policy"
+
   deploy-greyscale:
     name: Deploy Greyscale Lambda
     runs-on: ubuntu-latest
@@ -116,6 +172,13 @@ jobs:
             --output text \
             --region ${{ env.AWS_REGION }})
           echo "lambda_role_arn=$LAMBDA_ROLE_ARN" >> $GITHUB_OUTPUT
+
+          SNS_TOPIC_ARN=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.CDK_STACK_NAME }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`SnsTopicArn`].OutputValue' \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+          echo "sns_topic_arn=$SNS_TOPIC_ARN" >> $GITHUB_OUTPUT
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -168,6 +231,54 @@ jobs:
           role: ${{ steps.cfn-outputs.outputs.lambda_role_arn }}
           publish: true
 
+      - name: Subscribe greyscale Lambda to SNS with filter
+        run: |
+          # Get Lambda ARN
+          LAMBDA_ARN=$(aws lambda get-function \
+            --function-name greyscale-lambda \
+            --query 'Configuration.FunctionArn' \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+
+          # Check if subscription already exists
+          EXISTING_SUB=$(aws sns list-subscriptions-by-topic \
+            --topic-arn ${{ steps.cfn-outputs.outputs.sns_topic_arn }} \
+            --query "Subscriptions[?Endpoint=='$LAMBDA_ARN'].SubscriptionArn" \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+
+          # Subscribe if not already subscribed
+          if [ -z "$EXISTING_SUB" ]; then
+            SUB_ARN=$(aws sns subscribe \
+              --topic-arn ${{ steps.cfn-outputs.outputs.sns_topic_arn }} \
+              --protocol lambda \
+              --notification-endpoint $LAMBDA_ARN \
+              --query 'SubscriptionArn' \
+              --output text \
+              --region ${{ env.AWS_REGION }})
+            echo "Created subscription: $SUB_ARN"
+          else
+            SUB_ARN=$EXISTING_SUB
+            echo "Subscription already exists: $SUB_ARN"
+          fi
+
+          # Set filter policy for greyscale prefix
+          aws sns set-subscription-attributes \
+            --subscription-arn $SUB_ARN \
+            --attribute-name FilterPolicy \
+            --attribute-value '{"Records":{"s3":{"object":{"key":[{"prefix":"greyscale/"}]}}}}' \
+            --region ${{ env.AWS_REGION }}
+
+          # Grant SNS permission to invoke Lambda
+          aws lambda add-permission \
+            --function-name greyscale-lambda \
+            --statement-id sns-invoke-greyscale \
+            --action lambda:InvokeFunction \
+            --principal sns.amazonaws.com \
+            --source-arn ${{ steps.cfn-outputs.outputs.sns_topic_arn }} \
+            --region ${{ env.AWS_REGION }} 2>/dev/null || echo "Permission already exists"
+
+          echo "Greyscale Lambda subscribed to SNS with filter policy"
 
   deploy-exif:
     name: Deploy EXIF Lambda
@@ -196,6 +307,13 @@ jobs:
             --output text \
             --region ${{ env.AWS_REGION }})
           echo "lambda_role_arn=$LAMBDA_ROLE_ARN" >> $GITHUB_OUTPUT
+
+          SNS_TOPIC_ARN=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.CDK_STACK_NAME }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`SnsTopicArn`].OutputValue' \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+          echo "sns_topic_arn=$SNS_TOPIC_ARN" >> $GITHUB_OUTPUT
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -247,4 +365,53 @@ jobs:
           image-uri: ${{ steps.exif-build-image.outputs.image }}  # ECR image URI from previous step
           role: ${{ steps.cfn-outputs.outputs.lambda_role_arn }}
           publish: true
+
+      - name: Subscribe exif Lambda to SNS with filter
+        run: |
+          # Get Lambda ARN
+          LAMBDA_ARN=$(aws lambda get-function \
+            --function-name exif-lambda \
+            --query 'Configuration.FunctionArn' \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+
+          # Check if subscription already exists
+          EXISTING_SUB=$(aws sns list-subscriptions-by-topic \
+            --topic-arn ${{ steps.cfn-outputs.outputs.sns_topic_arn }} \
+            --query "Subscriptions[?Endpoint=='$LAMBDA_ARN'].SubscriptionArn" \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+
+          # Subscribe if not already subscribed
+          if [ -z "$EXISTING_SUB" ]; then
+            SUB_ARN=$(aws sns subscribe \
+              --topic-arn ${{ steps.cfn-outputs.outputs.sns_topic_arn }} \
+              --protocol lambda \
+              --notification-endpoint $LAMBDA_ARN \
+              --query 'SubscriptionArn' \
+              --output text \
+              --region ${{ env.AWS_REGION }})
+            echo "Created subscription: $SUB_ARN"
+          else
+            SUB_ARN=$EXISTING_SUB
+            echo "Subscription already exists: $SUB_ARN"
+          fi
+
+          # Set filter policy for exif prefix
+          aws sns set-subscription-attributes \
+            --subscription-arn $SUB_ARN \
+            --attribute-name FilterPolicy \
+            --attribute-value '{"Records":{"s3":{"object":{"key":[{"prefix":"exif/"}]}}}}' \
+            --region ${{ env.AWS_REGION }}
+
+          # Grant SNS permission to invoke Lambda
+          aws lambda add-permission \
+            --function-name exif-lambda \
+            --statement-id sns-invoke-exif \
+            --action lambda:InvokeFunction \
+            --principal sns.amazonaws.com \
+            --source-arn ${{ steps.cfn-outputs.outputs.sns_topic_arn }} \
+            --region ${{ env.AWS_REGION }} 2>/dev/null || echo "Permission already exists"
+
+          echo "EXIF Lambda subscribed to SNS with filter policy"
 
