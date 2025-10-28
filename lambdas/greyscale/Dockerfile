@@ -3,8 +3,15 @@ FROM public.ecr.aws/lambda/python:3.13
 # install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-############
-#
-# TODO: implement the rest of the image
-#
-############
+# Copy dependency file and install dependencies
+COPY pyproject.toml .
+RUN uv sync
+
+# Copy handler code
+COPY handler.py .
+
+# Set Python path
+ENV PYTHONPATH=/var/task
+
+# Set the Lambda handler
+CMD ["handler.greyscale_handler"]

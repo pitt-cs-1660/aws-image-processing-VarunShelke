@@ -1,8 +1,10 @@
-import json
-from PIL import Image
 import io
-import boto3
+import json
 from pathlib import Path
+
+import boto3
+from PIL import Image
+
 
 def download_from_s3(bucket, key):
     s3 = boto3.client('s3')
@@ -10,6 +12,7 @@ def download_from_s3(bucket, key):
     s3.download_fileobj(bucket, key, buffer)
     buffer.seek(0)
     return Image.open(buffer)
+
 
 def upload_to_s3(bucket, key, data, content_type='image/jpeg'):
     s3 = boto3.client('s3')
@@ -20,6 +23,7 @@ def upload_to_s3(bucket, key, data, content_type='image/jpeg'):
         s3.upload_fileobj(buffer, bucket, key)
     else:
         s3.put_object(Bucket=bucket, Key=key, Body=data, ContentType=content_type)
+
 
 def greyscale_handler(event, context):
     """
@@ -46,11 +50,19 @@ def greyscale_handler(event, context):
 
                     print(f"Processing: s3://{bucket_name}/{object_key}")
 
-                    ######
-                    #
-                    #  TODO: add greyscale lambda code here
-                    #
-                    ######
+                    # download image from S3
+                    image = download_from_s3(bucket_name, object_key)
+                    print(f"Downloaded image: {image.mode}")
+
+                    # convert image to greyscale
+                    greyscale_image = image.convert('L')
+                    print(f"Converted to greyscale mode: {greyscale_image.mode}")
+
+                    # upload processed image to /processed/greyscale/
+                    filename = Path(object_key).name
+                    output_key = f"processed/greyscale/{filename}"
+                    upload_to_s3(bucket_name, output_key, greyscale_image)
+                    print(f"Uploaded to: {output_key}")
 
                     processed_count += 1
 

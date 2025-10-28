@@ -1,8 +1,8 @@
 {
-  "name": "sample",
-  "version": "0.1.0",
+  "name": "assignment3-vps27",
+  "version": "1.0.0",
   "bin": {
-    "sample": "bin/sample.js"
+    "assignment3-vps27": "bin/app.js"
   },
   "scripts": {
     "build": "tsc",
