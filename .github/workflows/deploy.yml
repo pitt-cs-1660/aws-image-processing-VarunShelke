@@ -127,6 +127,13 @@ jobs:
             echo "Subscription already exists: $SUB_ARN"
           fi
 
+          # Set filter policy scope to MessageBody (required for S3 event filtering)
+          aws sns set-subscription-attributes \
+            --subscription-arn $SUB_ARN \
+            --attribute-name FilterPolicyScope \
+            --attribute-value MessageBody \
+            --region ${{ env.AWS_REGION }}
+
           # Set filter policy for resize prefix
           aws sns set-subscription-attributes \
             --subscription-arn $SUB_ARN \
@@ -262,6 +269,13 @@ jobs:
             echo "Subscription already exists: $SUB_ARN"
           fi
 
+          # Set filter policy scope to MessageBody (required for S3 event filtering)
+          aws sns set-subscription-attributes \
+            --subscription-arn $SUB_ARN \
+            --attribute-name FilterPolicyScope \
+            --attribute-value MessageBody \
+            --region ${{ env.AWS_REGION }}
+
           # Set filter policy for greyscale prefix
           aws sns set-subscription-attributes \
             --subscription-arn $SUB_ARN \
@@ -396,6 +410,13 @@ jobs:
             SUB_ARN=$EXISTING_SUB
             echo "Subscription already exists: $SUB_ARN"
           fi
+
+          # Set filter policy scope to MessageBody (required for S3 event filtering)
+          aws sns set-subscription-attributes \
+            --subscription-arn $SUB_ARN \
+            --attribute-name FilterPolicyScope \
+            --attribute-value MessageBody \
+            --region ${{ env.AWS_REGION }}
 
           # Set filter policy for exif prefix
           aws sns set-subscription-attributes \
