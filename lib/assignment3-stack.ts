@@ -78,6 +78,28 @@ export class Assignment3Stack extends cdk.Stack {
             resources: [`${bucket.bucketArn}/*`],
         }));
 
+        // Add inline policy for ECR access (Lambda needs to pull images)
+        lambdaExecutionRole.addToPolicy(new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: [
+                'ecr:GetDownloadUrlForLayer',
+                'ecr:BatchGetImage',
+                'ecr:BatchCheckLayerAvailability',
+            ],
+            resources: [
+                resizeLambdaRepo.repositoryArn,
+                greyscaleLambdaRepo.repositoryArn,
+                exifLambdaRepo.repositoryArn,
+            ],
+        }));
+
+        // Add ECR auth token permission
+        lambdaExecutionRole.addToPolicy(new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ['ecr:GetAuthorizationToken'],
+            resources: ['*'],
+        }));
+
         // SNS Topic for image processing notifications
         const imageProcessingTopic = new sns.Topic(this, 'ImageProcessingTopic', {
             topicName: 'image-processing-topic',
