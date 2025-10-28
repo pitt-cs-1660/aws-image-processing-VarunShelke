@@ -7,7 +7,7 @@ on:
 
 env:
   AWS_REGION: us-east-1  # update if you are in a different region
-  AWS_LAMBDA_ROLE_ARN: arn:aws:iam::523734927941:role/lambda-image-processing-role  # replace with your ARN
+  CDK_STACK_NAME: Assignment3Stack  # CloudFormation stack name from CDK
 
 jobs:
   deploy-resize:
@@ -28,6 +28,16 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Get CloudFormation outputs
+        id: cfn-outputs
+        run: |
+          LAMBDA_ROLE_ARN=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.CDK_STACK_NAME }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`LambdaExecutionRoleArn`].OutputValue' \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+          echo "lambda_role_arn=$LAMBDA_ROLE_ARN" >> $GITHUB_OUTPUT
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -40,12 +50,9 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           cd lambdas/resize
-          ######
-          #
-          #  TODO: implement build and push to ECR
-          #
-          ######
-          exit 1
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
       - name: Check if Lambda function exists
         id: check-lambda-resize
@@ -67,7 +74,7 @@ jobs:
             --function-name resize-lambda \
             --package-type Image \
             --code ImageUri=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
-            --role ${{ env.AWS_LAMBDA_ROLE_ARN }} \
+            --role ${{ steps.cfn-outputs.outputs.lambda_role_arn }} \
             --timeout 30 \
             --memory-size 512 \
             --region ${{ env.AWS_REGION }}
@@ -79,7 +86,7 @@ jobs:
           function-name: resize-lambda
           package-type: Image  # no zip!
           image-uri: ${{ steps.resize-build-image.outputs.image }}  # ECR image URI from previous step
-          role: ${{ env.AWS_LAMBDA_ROLE_ARN }}
+          role: ${{ steps.cfn-outputs.outputs.lambda_role_arn }}
           publish: true
 
   deploy-greyscale:
@@ -100,6 +107,16 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Get CloudFormation outputs
+        id: cfn-outputs
+        run: |
+          LAMBDA_ROLE_ARN=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.CDK_STACK_NAME }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`LambdaExecutionRoleArn`].OutputValue' \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+          echo "lambda_role_arn=$LAMBDA_ROLE_ARN" >> $GITHUB_OUTPUT
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -112,12 +129,9 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           cd lambdas/greyscale
-          ######
-          #
-          #  TODO: implement build and push to ECR
-          #
-          ######
-          exit 1
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
       - name: Check if Lambda function exists
         id: check-lambda-greyscale
@@ -139,7 +153,7 @@ jobs:
             --function-name greyscale-lambda \
             --package-type Image \
             --code ImageUri=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
-            --role ${{ env.AWS_LAMBDA_ROLE_ARN }} \
+            --role ${{ steps.cfn-outputs.outputs.lambda_role_arn }} \
             --timeout 30 \
             --memory-size 512 \
             --region ${{ env.AWS_REGION }}
@@ -151,7 +165,7 @@ jobs:
           function-name: greyscale-lambda
           package-type: Image  # no zip!
           image-uri: ${{ steps.greyscale-build-image.outputs.image }}  # ECR image URI from previous step
-          role: ${{ env.AWS_LAMBDA_ROLE_ARN }}
+          role: ${{ steps.cfn-outputs.outputs.lambda_role_arn }}
           publish: true
 
 
@@ -173,6 +187,16 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Get CloudFormation outputs
+        id: cfn-outputs
+        run: |
+          LAMBDA_ROLE_ARN=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.CDK_STACK_NAME }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`LambdaExecutionRoleArn`].OutputValue' \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+          echo "lambda_role_arn=$LAMBDA_ROLE_ARN" >> $GITHUB_OUTPUT
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -185,12 +209,9 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           cd lambdas/exif
-          ######
-          #
-          #  TODO: implement build and push to ECR
-          #
-          ######
-          exit 1
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
       - name: Check if Lambda function exists
         id: check-lambda-exif
@@ -212,7 +233,7 @@ jobs:
             --function-name exif-lambda \
             --package-type Image \
             --code ImageUri=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
-            --role ${{ env.AWS_LAMBDA_ROLE_ARN }} \
+            --role ${{ steps.cfn-outputs.outputs.lambda_role_arn }} \
             --timeout 30 \
             --memory-size 512 \
             --region ${{ env.AWS_REGION }}
@@ -224,6 +245,6 @@ jobs:
           function-name: exif-lambda
           package-type: Image  # no zip!
           image-uri: ${{ steps.exif-build-image.outputs.image }}  # ECR image URI from previous step
-          role: ${{ env.AWS_LAMBDA_ROLE_ARN }}
+          role: ${{ steps.cfn-outputs.outputs.lambda_role_arn }}
           publish: true
 
