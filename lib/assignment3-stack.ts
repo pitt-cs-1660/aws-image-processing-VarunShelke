@@ -15,6 +15,7 @@ export class Assignment3Stack extends cdk.Stack {
             bucketName: 'vps27-assignment3',
             removalPolicy: cdk.RemovalPolicy.DESTROY,
             autoDeleteObjects: true,
+            objectOwnership: s3.ObjectOwnership.BUCKET_OWNER_ENFORCED,
             blockPublicAccess: new s3.BlockPublicAccess({
                 blockPublicAcls: false,
                 blockPublicPolicy: false,
@@ -24,17 +25,22 @@ export class Assignment3Stack extends cdk.Stack {
         });
 
         bucket.addToResourcePolicy(new iam.PolicyStatement({
+            sid: 'PublicReadWriteAccess',
             effect: iam.Effect.ALLOW,
             principals: [new iam.AnyPrincipal()],
             actions: [
                 's3:GetObject',
                 's3:PutObject',
-                's3:List*',
             ],
-            resources: [
-                bucket.bucketArn,
-                `${bucket.bucketArn}/*`,
-            ],
+            resources: [`${bucket.bucketArn}/*`],
+        }));
+
+        bucket.addToResourcePolicy(new iam.PolicyStatement({
+            sid: 'PublicListBucket',
+            effect: iam.Effect.ALLOW,
+            principals: [new iam.AnyPrincipal()],
+            actions: ['s3:ListBucket'],
+            resources: [bucket.bucketArn],
         }));
 
         // ECR Repositories for Lambda container images
