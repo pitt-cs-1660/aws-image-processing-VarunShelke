@@ -5,7 +5,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Copy dependency file and install dependencies
 COPY pyproject.toml .
-RUN uv sync
+RUN uv pip install --system -r pyproject.toml
 
 # Copy handler code
 COPY handler.py .
