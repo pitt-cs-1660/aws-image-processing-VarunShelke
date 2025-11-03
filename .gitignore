@@ -228,3 +228,5 @@ output-*
 /lib/assignment3-stack.d.ts
 /test/sample.test.js
 /test/sample.test.d.ts
+/lib/assignment3-ecr-stack.js
+/lib/assignment3-ecr-stack.d.ts

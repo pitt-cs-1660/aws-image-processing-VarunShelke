@@ -5,10 +5,17 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as sns_subscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
 import * as s3n from 'aws-cdk-lib/aws-s3-notifications';
+import * as ecr from 'aws-cdk-lib/aws-ecr';
 import {Construct} from 'constructs';
 
+export interface Assignment3StackProps extends cdk.StackProps {
+    resizeRepo: ecr.IRepository;
+    greyscaleRepo: ecr.IRepository;
+    exifRepo: ecr.IRepository;
+}
+
 export class Assignment3Stack extends cdk.Stack {
-    constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+    constructor(scope: Construct, id: string, props: Assignment3StackProps) {
         super(scope, id, props);
 
         const bucket = new s3.Bucket(this, 'ImageProcessingBucket', {
@@ -102,7 +109,9 @@ export class Assignment3Stack extends cdk.Stack {
 
         const resizeLambda = new lambda.DockerImageFunction(this, 'ResizeLambda', {
             functionName: 'resize-lambda',
-            code: lambda.DockerImageCode.fromImageAsset('lambdas/resize'),
+            code: lambda.DockerImageCode.fromEcr(props.resizeRepo, {
+                tagOrDigest: 'latest',
+            }),
             timeout: cdk.Duration.seconds(30),
             memorySize: 512,
             role: lambdaExecutionRole,
@@ -111,7 +120,9 @@ export class Assignment3Stack extends cdk.Stack {
 
         const greyscaleLambda = new lambda.DockerImageFunction(this, 'GreyscaleLambda', {
             functionName: 'greyscale-lambda',
-            code: lambda.DockerImageCode.fromImageAsset('lambdas/greyscale'),
+            code: lambda.DockerImageCode.fromEcr(props.greyscaleRepo, {
+                tagOrDigest: 'latest',
+            }),
             timeout: cdk.Duration.seconds(30),
             memorySize: 512,
             role: lambdaExecutionRole,
@@ -120,7 +131,9 @@ export class Assignment3Stack extends cdk.Stack {
 
         const exifLambda = new lambda.DockerImageFunction(this, 'ExifLambda', {
             functionName: 'exif-lambda',
-            code: lambda.DockerImageCode.fromImageAsset('lambdas/exif'),
+            code: lambda.DockerImageCode.fromEcr(props.exifRepo, {
+                tagOrDigest: 'latest',
+            }),
             timeout: cdk.Duration.seconds(30),
             memorySize: 512,
             role: lambdaExecutionRole,
