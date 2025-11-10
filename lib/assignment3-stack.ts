@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as sns_subscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
 import * as s3n from 'aws-cdk-lib/aws-s3-notifications';
@@ -107,6 +108,11 @@ export class Assignment3Stack extends cdk.Stack {
             {prefix: 'exif/'}
         );
 
+        const resizeLambdaLogGroup = new logs.LogGroup(this, 'ResizeLambdaLogGroup', {
+            logGroupName: '/aws/lambda/resize-lambda',
+            retention: logs.RetentionDays.ONE_WEEK,
+            removalPolicy: cdk.RemovalPolicy.DESTROY,
+        });
         const resizeLambda = new lambda.DockerImageFunction(this, 'ResizeLambda', {
             functionName: 'resize-lambda',
             code: lambda.DockerImageCode.fromEcr(props.resizeRepo, {
@@ -115,9 +121,15 @@ export class Assignment3Stack extends cdk.Stack {
             timeout: cdk.Duration.seconds(30),
             memorySize: 512,
             role: lambdaExecutionRole,
+            logGroup: resizeLambdaLogGroup,
             description: 'Resizes images uploaded to S3',
         });
 
+        const greyscaleLambdaLogGroup = new logs.LogGroup(this, 'GreyscaleLambdaLogGroup', {
+            logGroupName: '/aws/lambda/greyscale-lambda',
+            retention: logs.RetentionDays.ONE_WEEK,
+            removalPolicy: cdk.RemovalPolicy.DESTROY,
+        });
         const greyscaleLambda = new lambda.DockerImageFunction(this, 'GreyscaleLambda', {
             functionName: 'greyscale-lambda',
             code: lambda.DockerImageCode.fromEcr(props.greyscaleRepo, {
@@ -126,9 +138,15 @@ export class Assignment3Stack extends cdk.Stack {
             timeout: cdk.Duration.seconds(30),
             memorySize: 512,
             role: lambdaExecutionRole,
+            logGroup: greyscaleLambdaLogGroup,
             description: 'Converts images to greyscale',
         });
 
+        const exifLambdaLogGroup = new logs.LogGroup(this, 'ExifLambdaLogGroup', {
+            logGroupName: '/aws/lambda/exif-lambda',
+            retention: logs.RetentionDays.ONE_WEEK,
+            removalPolicy: cdk.RemovalPolicy.DESTROY,
+        });
         const exifLambda = new lambda.DockerImageFunction(this, 'ExifLambda', {
             functionName: 'exif-lambda',
             code: lambda.DockerImageCode.fromEcr(props.exifRepo, {
@@ -137,6 +155,7 @@ export class Assignment3Stack extends cdk.Stack {
             timeout: cdk.Duration.seconds(30),
             memorySize: 512,
             role: lambdaExecutionRole,
+            logGroup: exifLambdaLogGroup,
             description: 'Extracts EXIF data from images',
         });
 
