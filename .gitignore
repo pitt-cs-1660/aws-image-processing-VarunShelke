@@ -220,13 +220,7 @@ __marimo__/
 
 # test files
 output-*
+# cdk files
 /node_modules/
 /cdk.out/
-/bin/app.js
-/bin/app.d.ts
-/lib/assignment3-stack.js
-/lib/assignment3-stack.d.ts
-/test/sample.test.js
-/test/sample.test.d.ts
-/lib/assignment3-ecr-stack.js
-/lib/assignment3-ecr-stack.d.ts
+/s3-bucket.txt
